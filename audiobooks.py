@@ -32,7 +32,6 @@ for rootDir in next(os.walk(downloadFolder))[1]: # Loop through all directories 
                 toProcess[bookDir] = filteredFiles # Append current (sub)directory to list of directories to be processed, with file list attached
             else:
                 alreadyLinked = True
-                toProcess[bookDir] = filteredFiles
     # If the book does not already exist in audiobookFolder, continue processing book
     
     if not alreadyLinked:
