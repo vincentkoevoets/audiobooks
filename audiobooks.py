@@ -24,18 +24,22 @@ for root, subFolder, files in os.walk(audiobookFolder):
 
 for rootDir in next(os.walk(downloadFolder))[1]: # Loop through all directories on level 0
     alreadyLinked = False
-    toProcess = []
+    toProcess = {}
     for bookDir, subDirs, files in os.walk(os.path.join(downloadFolder,rootDir)): # os.walk through every directory
         if any(y in x for x in files for y in allowedFiles): # only continue if (sub)directory contains files in allowedFiles list
             filteredFiles = [f for f in files if f[-3:] in allowedFiles] # Make new list of files with only files in allowedFiles list
             if os.stat(os.path.join(bookDir, filteredFiles[0])).st_ino not in linkedInodes: # Only continue if files are not already linked in audiobookFolder. Checked against earlied made linkedInodes
-                toProcess.append([bookDir,filteredFiles]) # Append current (sub)directory to list of directories to be processed, with file list attached
+                toProcess[bookDir] = filteredFiles # Append current (sub)directory to list of directories to be processed, with file list attached
             else:
                 alreadyLinked = True
+                toProcess[bookDir] = filteredFiles
     # If the book does not already exist in audiobookFolder, continue processing book
+    
     if not alreadyLinked:
+        # Here begins user input for current book
         os.system('clear')
         print(rootDir)
+        print(colored("Press Enter to skip this book","green",attrs=['bold']))
         print("-----------------")
         print("Known authors:") 
         # Show list of authors already in audiobookFolder, from list knownAuthors
@@ -44,8 +48,8 @@ for rootDir in next(os.walk(downloadFolder))[1]: # Loop through all directories 
         chosenAuthor = input("Author: ")
         if chosenAuthor.isnumeric():
             chosenAuthor = knownAuthors[int(chosenAuthor)-1]
-            print(colored("Chosen author (Press Enter to skip this book): "+chosenAuthor,'green',attrs=['bold']))
-        if not chosenAuthor: # If not author is entered, skip this book entirely
+            print(colored("Chosen author: "+chosenAuthor,'green',attrs=['bold']))
+        if not chosenAuthor: # If no author is entered, skip this book entirely
             continue
         errorCounter = 0
         chosenTitle = ''
@@ -62,7 +66,7 @@ for rootDir in next(os.walk(downloadFolder))[1]: # Loop through all directories 
         # This contains a list of all directories in author directory, so the list also shows book(s) not belonging to a series
         knownSeries = next(os.walk(os.path.join(audiobookFolder,chosenAuthor)))[1] 
         if(len(knownSeries) != 0):
-            print("Known series for author (attention: these can also be book not belonging to a series):")
+            print("Known series for author (attention: these can also be books not belonging to a series):")
             for knownSerieIndex, knownSerie in enumerate(knownSeries):
                 print(str(knownSerieIndex+1) +': '+knownSerie)
         chosenSeries = input("Series (enter for none): ")
@@ -82,29 +86,29 @@ for rootDir in next(os.walk(downloadFolder))[1]: # Loop through all directories 
                     print(colored("Please enter a series part!", 'red',attrs=['bold']))
                 errorCounter += 1
                 seriesPart = input("Series part: ")
-        # Add formatting for seriesPart
+        # End of user input for current book
+
+        # Add formatting for seriesPart if seriesPart is specified
         if seriesPart:
             seriesPart = str(seriesPart) + ". "
         newDir = os.path.join(audiobookFolder,chosenAuthor,chosenSeries,seriesPart+chosenTitle)
-        # Process all the (sub)directories for current book
-        for currentProcessDir in toProcess:
-            subDir = currentProcessDir[0].replace(downloadFolder,'').replace(rootDir,'').replace('/','') # Extract last part of directory to get subdirectory. This is used 1:1 in audiobookFolder
+        # Process all the (sub)directories for current book with data provided by user input
+        trackCounter = 1
+        for currentProcessDir in dict(sorted(toProcess.items())):
             newDir = os.path.join(audiobookFolder,chosenAuthor,chosenSeries,seriesPart+chosenTitle)
-            if subDir != '':
-                newDir = os.path.join(newDir,subDir) # Add subdir, if files were in subdir in downloadFolder
             try:
                 os.makedirs(newDir)
             except FileExistsError:
-                print("Deze directory bestaat al") # This should not happen, but just to make sure we're not overwriting anything
-                exit()
-            trackCounter = 1
-            for newFile in sorted(currentProcessDir[1]): # Process all files in current (sub)dir
+                pass # When a download dir has multiple subdirs (instead of flat directory), directory is already there in audiobookFolder from previous subdir
+
+            for newFile in sorted(toProcess[currentProcessDir]): # Process all files in current (sub)dir. Subdirs in downloadFolder are flattened, because of expected directory structure by ABS
                 fileExtension = os.path.splitext(newFile)[1]
-                os.link(os.path.join(currentProcessDir[0],newFile), os.path.join(newDir,str("{:03d}".format(trackCounter))+fileExtension))
+                os.link(os.path.join(currentProcessDir,newFile), os.path.join(newDir,str("{:03d}".format(trackCounter))+fileExtension))
                 trackCounter += 1
         bookCounter += 1
         print("-----------------")
         toContinue = input("Continue to next book (Enter)")
+
 if bookCounter == 0:
     print("No books found for processing, exiting program")
 else:
