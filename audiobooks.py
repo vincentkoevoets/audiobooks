@@ -1,10 +1,7 @@
 #!/home/vincent/.venv/bin/python
 
 #import sys
-import json
-import requests
 import os
-import time
 from termcolor import colored
 
 downloadFolder = "/media/hdd/data/torrents/audiobooks/personal"
